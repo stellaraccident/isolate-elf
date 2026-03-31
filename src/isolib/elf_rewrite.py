@@ -26,6 +26,8 @@ from isolib.elf_types import (
     ELF64_SHDR_SIZE,
     ELF64_SYM_SIZE,
     PAGE_SIZE,
+    DT_GNU_HASH,
+    DT_HASH,
     DT_NULL,
     DT_SONAME,
     DT_STRSZ,
@@ -35,7 +37,9 @@ from isolib.elf_types import (
     SHT_DYNAMIC,
     SHT_DYNSYM,
     SHT_GNU_HASH,
+    SHT_GNU_VERSYM,
     SHT_HASH,
+    SHT_RELA,
     SHT_STRTAB,
     Elf64Sym,
     ElfHeader,
@@ -157,9 +161,13 @@ def rename_dynamic_symbols(
     # Re-read syms (st_name offsets were updated in-place)
     syms = _read_dynsym(data, dynsym_sec.header)
 
-    # Rebuild hash tables
-    _rebuild_gnu_hash(data, sections, syms, final_dynstr)
-    _rebuild_sysv_hash(data, sections, syms, final_dynstr)
+    # Reorder .dynsym for GNU hash and rebuild all hash tables.
+    # GNU hash requires symbols within each bucket to be contiguous in
+    # .dynsym. After renaming, hash values change so bucket assignments
+    # change, breaking contiguity. We fix this by reordering .dynsym
+    # (and updating all structures that reference symbols by index:
+    # relocations, .gnu.version).
+    _reorder_dynsym_and_rebuild_hashes(data, ehdr, sections, dynsym_sec, final_dynstr)
 
     output_path.write_bytes(data)
 
@@ -442,39 +450,123 @@ def _update_dynamic_entry(
     log.warning("DT tag %d not found in .dynamic", tag)
 
 
-def _rebuild_gnu_hash(
+def _reorder_dynsym_and_rebuild_hashes(
     data: bytearray,
+    ehdr: ElfHeader,
     sections: list[_Section],
-    syms: list[Elf64Sym],
+    dynsym_sec: _Section,
     dynstr: bytearray,
 ) -> None:
-    """Rebuild .gnu.hash table with updated symbol names.
+    """Reorder .dynsym for GNU hash contiguity and rebuild all hash tables.
 
-    GNU hash requires symbols to be sorted by (hash % nbuckets) for the
-    chain walk to work. Since we can't reorder .dynsym (other structures
-    reference symbols by index), we rebuild the hash with correct values
-    for the existing symbol order. This works because the dynamic linker
-    does a linear scan within each chain checking both hash and name.
+    GNU hash requires that symbols in the same bucket are contiguous in
+    .dynsym. After renaming, hash values change, so we must reorder.
+    This also requires updating:
+    - .rela.dyn / .rela.plt: relocation r_info symbol indices
+    - .gnu.version: parallel array reordered to match new .dynsym order
+
+    The reorder preserves the GNU hash invariant:
+    - Symbols 0..symoffset-1 are "unhashed" (local/undefined) — kept first
+    - Symbols symoffset..N are sorted by (gnu_hash(name) % nbuckets)
     """
-    sec = _find_section(sections, ".gnu.hash")
-    if sec is None:
+    gnu_hash_sec = _find_section(sections, ".gnu.hash")
+    sysv_hash_sec = _find_section(sections, ".hash")
+
+    syms = _read_dynsym(data, dynsym_sec.header)
+    nsyms = len(syms)
+
+    if gnu_hash_sec is not None:
+        off = gnu_hash_sec.header.sh_offset
+        nbuckets = struct.unpack_from("<I", data, off)[0]
+        symoffset = struct.unpack_from("<I", data, off + 4)[0]
+        bloom_size = struct.unpack_from("<I", data, off + 8)[0]
+        bloom_shift = struct.unpack_from("<I", data, off + 12)[0]
+    else:
+        # No gnu.hash — just rebuild sysv hash if present
+        if sysv_hash_sec is not None:
+            _rebuild_sysv_hash(data, sysv_hash_sec, syms, dynstr)
         return
 
-    off = sec.header.sh_offset
-    nbuckets = struct.unpack_from("<I", data, off)[0]
-    symoffset = struct.unpack_from("<I", data, off + 4)[0]
-    bloom_size = struct.unpack_from("<I", data, off + 8)[0]
-    bloom_shift = struct.unpack_from("<I", data, off + 12)[0]
+    # Compute new hashes for the hashed portion (symoffset..N)
+    hashed_syms = list(range(symoffset, nsyms))
+    sym_hashes = {}
+    for i in hashed_syms:
+        name = read_string(dynstr, syms[i].st_name)
+        sym_hashes[i] = gnu_hash(name)
 
-    bloom_off = off + 16
+    # Sort hashed symbols by bucket for contiguity
+    hashed_syms.sort(key=lambda i: sym_hashes[i] % nbuckets)
+
+    # Build the full new ordering: [0..symoffset-1] + sorted hashed
+    new_order = list(range(symoffset)) + hashed_syms
+
+    # Build old_index -> new_index mapping
+    old_to_new: dict[int, int] = {}
+    for new_idx, old_idx in enumerate(new_order):
+        old_to_new[old_idx] = new_idx
+
+    # Check if reorder is actually needed
+    if new_order == list(range(nsyms)):
+        log.debug("No .dynsym reorder needed — rebuilding hashes in place")
+    else:
+        log.debug("Reordering .dynsym: %d symbols, %d hashed", nsyms, len(hashed_syms))
+
+        # Read current .dynsym and .gnu.version as raw byte arrays
+        dynsym_off = dynsym_sec.header.sh_offset
+        old_dynsym_bytes = bytes(data[dynsym_off : dynsym_off + nsyms * ELF64_SYM_SIZE])
+
+        versym_sec = _find_section(sections, ".gnu.version")
+        old_versym_bytes = None
+        if versym_sec is not None:
+            vs_off = versym_sec.header.sh_offset
+            vs_size = versym_sec.header.sh_size
+            old_versym_bytes = bytes(data[vs_off : vs_off + vs_size])
+
+        # Write reordered .dynsym
+        for new_idx, old_idx in enumerate(new_order):
+            src_off = old_idx * ELF64_SYM_SIZE
+            dst_off = dynsym_off + new_idx * ELF64_SYM_SIZE
+            data[dst_off : dst_off + ELF64_SYM_SIZE] = (
+                old_dynsym_bytes[src_off : src_off + ELF64_SYM_SIZE]
+            )
+
+        # Write reordered .gnu.version
+        if old_versym_bytes is not None and versym_sec is not None:
+            for new_idx, old_idx in enumerate(new_order):
+                src_off = old_idx * 2
+                dst_off = versym_sec.header.sh_offset + new_idx * 2
+                if src_off + 2 <= len(old_versym_bytes):
+                    data[dst_off : dst_off + 2] = old_versym_bytes[src_off : src_off + 2]
+
+        # Update relocation symbol indices
+        for sec in sections:
+            if sec.header.sh_type != SHT_RELA:
+                continue
+            rela_off = sec.header.sh_offset
+            rela_end = rela_off + sec.header.sh_size
+            entry_size = sec.header.sh_entsize or 24
+            off = rela_off
+            while off < rela_end:
+                r_info = struct.unpack_from("<Q", data, off + 8)[0]
+                old_sym = r_info >> 32
+                r_type = r_info & 0xFFFFFFFF
+                if old_sym in old_to_new:
+                    new_sym = old_to_new[old_sym]
+                    new_info = (new_sym << 32) | r_type
+                    struct.pack_into("<Q", data, off + 8, new_info)
+                off += entry_size
+
+    # Re-read reordered syms for hash rebuild
+    syms = _read_dynsym(data, dynsym_sec.header)
+
+    # Rebuild .gnu.hash
+    bloom_off = gnu_hash_sec.header.sh_offset + 16
     buckets_off = bloom_off + bloom_size * 8
     chains_off = buckets_off + nbuckets * 4
+    num_chain_syms = nsyms - symoffset
 
-    num_chain_syms = len(syms) - symoffset
-
-    # Compute new hashes
-    new_hashes: list[int] = []
-    for i in range(symoffset, len(syms)):
+    new_hashes = []
+    for i in range(symoffset, nsyms):
         name = read_string(dynstr, syms[i].st_name)
         new_hashes.append(gnu_hash(name))
 
@@ -489,21 +581,18 @@ def _rebuild_gnu_hash(
     for i, val in enumerate(bloom):
         struct.pack_into("<Q", data, bloom_off + i * 8, val)
 
-    # Determine bucket assignment for each symbol
-    sym_to_bucket = [h % nbuckets for h in new_hashes]
-
-    # Clear buckets
+    # Rebuild buckets — point to first symbol in each bucket
     for i in range(nbuckets):
         struct.pack_into("<I", data, buckets_off + i * 4, 0)
 
-    # Set bucket entries to the first symbol in each bucket
+    sym_to_bucket = [h % nbuckets for h in new_hashes]
     seen_buckets: set[int] = set()
     for i, bucket in enumerate(sym_to_bucket):
         if bucket not in seen_buckets:
             struct.pack_into("<I", data, buckets_off + bucket * 4, i + symoffset)
             seen_buckets.add(bucket)
 
-    # Write chain values: hash with bit 0 as end-of-chain marker
+    # Rebuild chains — hash value with bit 0 as end-of-chain
     for i in range(num_chain_syms):
         h = new_hashes[i]
         is_last = (
@@ -515,33 +604,31 @@ def _rebuild_gnu_hash(
         if chain_off + 4 <= len(data):
             struct.pack_into("<I", data, chain_off, chain_val)
 
-    log.debug("Rebuilt .gnu.hash: %d buckets, %d symbols", nbuckets, num_chain_syms)
+    log.debug("Rebuilt .gnu.hash: %d buckets, %d hashed symbols", nbuckets, num_chain_syms)
+
+    # Also rebuild .hash (SYSV) if present
+    if sysv_hash_sec is not None:
+        _rebuild_sysv_hash(data, sysv_hash_sec, syms, dynstr)
 
 
 def _rebuild_sysv_hash(
     data: bytearray,
-    sections: list[_Section],
+    sec: _Section,
     syms: list[Elf64Sym],
     dynstr: bytearray,
 ) -> None:
-    """Rebuild .hash (SYSV) table with updated symbol names."""
-    sec = _find_section(sections, ".hash")
-    if sec is None:
-        return
-
+    """Rebuild .hash (SYSV) table in place."""
     off = sec.header.sh_offset
     nbuckets = struct.unpack_from("<I", data, off)[0]
     nchains = struct.unpack_from("<I", data, off + 4)[0]
     buckets_off = off + 8
     chains_off = buckets_off + nbuckets * 4
 
-    # Clear
     for i in range(nbuckets):
         struct.pack_into("<I", data, buckets_off + i * 4, 0)
     for i in range(nchains):
         struct.pack_into("<I", data, chains_off + i * 4, 0)
 
-    # Rebuild using chain insertion
     for i, sym in enumerate(syms):
         if sym.st_name == 0 and i == 0:
             continue
