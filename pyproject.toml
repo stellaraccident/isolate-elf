@@ -16,4 +16,4 @@ isolib = "isolib.cli:main"
 where = ["src"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "integration"]
