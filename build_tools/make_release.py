@@ -25,7 +25,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 VERSION_FILE = REPO_ROOT / "version.json"
-INIT_FILE = REPO_ROOT / "src" / "isolib" / "__init__.py"
+INIT_FILE = REPO_ROOT / "src" / "isolate_elf" / "__init__.py"
 
 
 def run(cmd: list[str], dry_run: bool = False):
@@ -40,7 +40,7 @@ def read_version_json() -> dict:
 
 
 def write_version(version: str, dry_run: bool = False):
-    """Update version in both version.json and src/isolib/__init__.py."""
+    """Update version in both version.json and src/isolate_elf/__init__.py."""
     # Update version.json
     data = read_version_json()
     data["package-version"] = version
@@ -91,7 +91,7 @@ def check_clean_tree(dry_run: bool):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Create an isolib release")
+    parser = argparse.ArgumentParser(description="Create an isolate-elf release")
     parser.add_argument(
         "--version", required=True, help="Release version (e.g., 0.1.0)"
     )
@@ -115,7 +115,7 @@ def main():
     # Step 1: Set release version.
     print(f"\n=== Setting version to {args.version} ===")
     write_version(args.version, args.dry_run)
-    run(["git", "add", "version.json", "src/isolib/__init__.py"], args.dry_run)
+    run(["git", "add", "version.json", "src/isolate_elf/__init__.py"], args.dry_run)
     run(["git", "commit", "-m", f"Release {tag}"], args.dry_run)
 
     # Step 2: Create tag.
@@ -127,7 +127,7 @@ def main():
         dev = next_dev_version(args.version)
         print(f"\n=== Bumping to {dev} ===")
         write_version(dev, args.dry_run)
-        run(["git", "add", "version.json", "src/isolib/__init__.py"], args.dry_run)
+        run(["git", "add", "version.json", "src/isolate_elf/__init__.py"], args.dry_run)
         run(["git", "commit", "-m", f"Bump to {dev}"], args.dry_run)
 
     # Done.

@@ -27,16 +27,16 @@ jobs:
             build-essential binutils ninja-build meson pkg-config \
             autoconf automake libtool gettext autopoint
 
-      - name: Install isolib + pytest
+      - name: Install isolate-elf + pytest
         run: pip install -e . pytest
 
       - name: Cache sysdep sources and builds
         uses: actions/cache@v4
         with:
-          path: .cache/isolib
-          key: isolib-sysdeps-${{ hashFiles('integration/test_*.py') }}
+          path: .cache/isolate-elf
+          key: isolate-elf-sysdeps-${{ hashFiles('integration/test_*.py') }}
           restore-keys: |
-            isolib-sysdeps-
+            isolate-elf-sysdeps-
 
       - name: Run all tests
         run: python -m pytest tests/ integration/ -v --tb=short
@@ -60,9 +60,9 @@ jobs:
 
       - name: Verify package
         run: |
-          pip install dist/isolib-*.whl
-          isolib --help
-          python -c "import isolib; print(f'Version: {isolib.__version__}')"
+          pip install dist/isolate_elf-*.whl
+          isolate-elf --help
+          python -c "import isolate_elf; print(f'Version: {isolate_elf.__version__}')"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

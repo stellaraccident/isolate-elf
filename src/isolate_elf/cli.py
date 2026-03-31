@@ -1,4 +1,4 @@
-"""Command-line interface for isolib."""
+"""Command-line interface for isolate-elf."""
 
 from __future__ import annotations
 
@@ -7,14 +7,14 @@ import logging
 import sys
 from pathlib import Path
 
-from isolib.model import IsolationConfig, WarningCategory
-from isolib.pipeline import IsolationError, isolate_library
-from isolib.toolchain import Toolchain
+from isolate_elf.model import IsolationConfig, WarningCategory
+from isolate_elf.pipeline import IsolationError, isolate_library
+from isolate_elf.toolchain import Toolchain
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        prog="isolib",
+        prog="isolate-elf",
         description="ELF symbol isolation for bundled system dependencies",
     )
     parser.add_argument(
@@ -123,8 +123,8 @@ def _cmd_inspect(args: argparse.Namespace) -> None:
         print(f"Error: input file not found: {args.input}", file=sys.stderr)
         sys.exit(1)
 
-    from isolib.elf import extract_dynamic_symbols
-    from isolib.filters import classify_symbol
+    from isolate_elf.elf import extract_dynamic_symbols
+    from isolate_elf.filters import classify_symbol
 
     tc = Toolchain.discover()
     symbols = extract_dynamic_symbols(args.input, tc.readelf)

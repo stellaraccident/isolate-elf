@@ -1,4 +1,4 @@
-"""Core data model for isolib."""
+"""Core data model for isolate-elf."""
 
 from __future__ import annotations
 

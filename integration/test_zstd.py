@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from isolib.model import IsolationConfig, WarningCategory
-from isolib.pipeline import isolate_library
-from isolib.toolchain import Toolchain
+from isolate_elf.model import IsolationConfig, WarningCategory
+from isolate_elf.pipeline import isolate_library
+from isolate_elf.toolchain import Toolchain
 
 from .conftest import (
     BuiltLibrary,
@@ -83,8 +83,8 @@ def zstd_built() -> BuiltLibrary:
 
 @pytest.fixture(scope="module")
 def zstd_isolated(zstd_built: BuiltLibrary, toolchain: Toolchain) -> tuple[IsolationConfig, "IsolationResult"]:
-    """Run isolib on the built zstd library."""
-    from isolib.pipeline import IsolationResult
+    """Run isolate-elf on the built zstd library."""
+    from isolate_elf.pipeline import IsolationResult
 
     output_dir = CACHE_DIR / "isolated" / "zstd-1.5.7"
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from isolib.elf import extract_dynamic_symbols
-from isolib.model import SymbolBind, SymbolType, SymbolVisibility
+from isolate_elf.elf import extract_dynamic_symbols
+from isolate_elf.model import SymbolBind, SymbolType, SymbolVisibility
 
 
 def test_extract_testlib_functions(testlib_so: Path) -> None:

@@ -1,7 +1,7 @@
 """Tests for redirect header generation."""
 
-from isolib.header import generate_redirect_header
-from isolib.model import SymbolRename, SymbolType
+from isolate_elf.header import generate_redirect_header
+from isolate_elf.model import SymbolRename, SymbolType
 
 
 def test_basic_header() -> None:

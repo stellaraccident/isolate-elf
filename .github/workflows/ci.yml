@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install isolib
+      - name: Install isolate-elf
         run: pip install -e .
 
       - name: Install pytest
@@ -51,16 +51,16 @@ jobs:
             gettext \
             autopoint
 
-      - name: Install isolib + pytest
+      - name: Install isolate-elf + pytest
         run: pip install -e . pytest
 
       - name: Cache sysdep sources and builds
         uses: actions/cache@v4
         with:
-          path: .cache/isolib
-          key: isolib-sysdeps-${{ hashFiles('integration/test_*.py') }}
+          path: .cache/isolate-elf
+          key: isolate-elf-sysdeps-${{ hashFiles('integration/test_*.py') }}
           restore-keys: |
-            isolib-sysdeps-
+            isolate-elf-sysdeps-
 
       - name: Run integration tests
         run: python -m pytest integration/ -v --tb=short
@@ -69,6 +69,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: isolib-dump
-          path: /tmp/isolib-dump/
+          name: isolate-elf-dump
+          path: /tmp/isolate-elf-dump/
           retention-days: 7

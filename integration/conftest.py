@@ -1,7 +1,7 @@
 """Integration test infrastructure: download, build, cache real sysdep libraries.
 
 Use --dump-artifacts=/path to copy before/after .so files for inspection:
-    pytest integration/ --dump-artifacts=/tmp/isolib-dump
+    pytest integration/ --dump-artifacts=/tmp/isolate-elf-dump
 """
 
 from __future__ import annotations
@@ -113,8 +113,8 @@ def _dump_isolation_artifacts(request: pytest.FixtureRequest, dump_dir: Path | N
 
 # Cache directory for downloaded sources and built artifacts
 CACHE_DIR = Path(os.environ.get(
-    "ISOLIB_CACHE_DIR",
-    Path(__file__).parent.parent / ".cache" / "isolib",
+    "ISOLATE_ELF_CACHE_DIR",
+    Path(__file__).parent.parent / ".cache" / "isolate-elf",
 ))
 
 

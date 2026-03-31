@@ -5,7 +5,7 @@ from __future__ import annotations
 import fnmatch
 import re
 
-from isolib.model import (
+from isolate_elf.model import (
     ElfSymbol,
     IsolationWarning,
     SymbolBind,

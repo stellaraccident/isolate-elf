@@ -5,10 +5,10 @@ import subprocess
 
 import pytest
 
-from isolib.elf import extract_dynamic_symbols
-from isolib.model import IsolationConfig, WarningCategory
-from isolib.pipeline import IsolationError, isolate_library
-from isolib.toolchain import Toolchain
+from isolate_elf.elf import extract_dynamic_symbols
+from isolate_elf.model import IsolationConfig, WarningCategory
+from isolate_elf.pipeline import IsolationError, isolate_library
+from isolate_elf.toolchain import Toolchain
 
 
 @pytest.fixture(scope="session")

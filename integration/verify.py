@@ -15,8 +15,8 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from isolib.model import IsolationResult
-from isolib.toolchain import Toolchain
+from isolate_elf.model import IsolationResult
+from isolate_elf.toolchain import Toolchain
 
 
 @dataclass

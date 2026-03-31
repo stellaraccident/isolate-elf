@@ -1,10 +1,10 @@
-# Releasing isolib
+# Releasing isolate-elf
 
 ## One-time PyPI setup
 
 ### 1. Create the PyPI project
 
-Go to https://pypi.org and create a new project named `isolib` (or
+Go to https://pypi.org and create a new project named `isolate-elf` (or
 whatever the package name will be). You can do this by uploading a first
 release manually, or the trusted publisher can create it on first push.
 
@@ -16,7 +16,7 @@ publisher:
 | Field | Value |
 |-------|-------|
 | Owner | `ROCm` (or your GitHub org) |
-| Repository | `isolib` |
+| Repository | `isolate-elf` |
 | Workflow name | `release.yml` |
 | Environment name | `pypi` |
 
@@ -49,7 +49,7 @@ git push origin main --tags
 ```
 
 The `make_release.py` script:
-1. Sets `version.json` and `src/isolib/__init__.py` to `0.1.0`
+1. Sets `version.json` and `src/isolate_elf/__init__.py` to `0.1.0`
 2. Commits: `Release v0.1.0`
 3. Tags: `v0.1.0`
 4. Sets version to `0.2.0.dev0` (with `--bump-dev`)

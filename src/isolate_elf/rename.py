@@ -9,8 +9,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from isolib.elf_rewrite import rename_dynamic_symbols
-from isolib.model import SymbolRename
+from isolate_elf.elf_rewrite import rename_dynamic_symbols
+from isolate_elf.model import SymbolRename
 
 
 def generate_redefine_map(renames: list[SymbolRename]) -> str:

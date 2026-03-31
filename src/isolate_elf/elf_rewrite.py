@@ -20,7 +20,7 @@ import struct
 from dataclasses import dataclass
 from pathlib import Path
 
-from isolib.elf_types import (
+from isolate_elf.elf_types import (
     ELF64_EHDR_SIZE,
     ELF64_PHDR_SIZE,
     ELF64_SHDR_SIZE,

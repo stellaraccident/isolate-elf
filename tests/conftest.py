@@ -1,4 +1,4 @@
-"""Shared fixtures for isolib unit tests."""
+"""Shared fixtures for isolate-elf unit tests."""
 
 from __future__ import annotations
 

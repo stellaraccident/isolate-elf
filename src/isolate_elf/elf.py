@@ -6,7 +6,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from isolib.model import ElfSymbol, SymbolBind, SymbolType, SymbolVisibility
+from isolate_elf.model import ElfSymbol, SymbolBind, SymbolType, SymbolVisibility
 
 # readelf -sW --dyn-syms output line pattern:
 #   Num:    Value          Size Type    Bind   Vis      Ndx Name

@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from isolib.model import SymbolRename, SymbolType
-from isolib.trampoline import build_stubs_archive, generate_trampoline_asm
+from isolate_elf.model import SymbolRename, SymbolType
+from isolate_elf.trampoline import build_stubs_archive, generate_trampoline_asm
 
 
 def test_x86_64_asm_generation() -> None:

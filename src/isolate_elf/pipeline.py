@@ -6,20 +6,20 @@ import logging
 import sys
 from pathlib import Path
 
-from isolib.elf import extract_dynamic_symbols
-from isolib.filters import classify_symbol
-from isolib.header import generate_redirect_header
-from isolib.linker_script import generate_linker_script
-from isolib.model import (
+from isolate_elf.elf import extract_dynamic_symbols
+from isolate_elf.filters import classify_symbol
+from isolate_elf.header import generate_redirect_header
+from isolate_elf.linker_script import generate_linker_script
+from isolate_elf.model import (
     IsolationConfig,
     IsolationResult,
     IsolationWarning,
     SymbolRename,
     WarningCategory,
 )
-from isolib.rename import rename_symbols
-from isolib.toolchain import Toolchain
-from isolib.trampoline import build_stubs_archive, generate_trampoline_asm
+from isolate_elf.rename import rename_symbols
+from isolate_elf.toolchain import Toolchain
+from isolate_elf.trampoline import build_stubs_archive, generate_trampoline_asm
 
 log = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ def isolate_library(
     prefixed_so_name = config.soname or f"lib{prefix}_sysdeps_{base}.so.1"
     stubs_name = f"lib{prefix}_{base}_stubs.a"
     script_name = f"lib{base}.so"
-    header_name = f"{prefix}_isolib_{base}_redirect.h"
+    header_name = f"{prefix}_isolate_elf_{base}_redirect.h"
     guard = f"{prefix.upper()}_ISOLIB_{base.upper()}_REDIRECT_H"
 
     prefixed_so_path = config.output_dir / prefixed_so_name

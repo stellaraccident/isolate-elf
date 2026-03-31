@@ -1,6 +1,6 @@
 """Tests for linker script generation."""
 
-from isolib.linker_script import generate_linker_script
+from isolate_elf.linker_script import generate_linker_script
 
 
 def test_basic_script() -> None:

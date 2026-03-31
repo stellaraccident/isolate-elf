@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "isolib"
+name = "isolate-elf"
 dynamic = ["version"]
 description = "ELF symbol isolation for bundled system dependencies"
 requires-python = ">=3.10"
@@ -19,16 +19,16 @@ classifiers = [
 ]
 
 [project.urls]
-Repository = "https://github.com/ROCm/isolib"
+Repository = "https://github.com/ROCm/isolate-elf"
 
 [project.scripts]
-isolib = "isolib.cli:main"
+isolate-elf = "isolate_elf.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.dynamic]
-version = {attr = "isolib.__version__"}
+version = {attr = "isolate_elf.__version__"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "integration"]

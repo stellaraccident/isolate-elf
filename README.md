@@ -1,11 +1,11 @@
-# isolib — ELF Symbol Isolation for Bundled System Dependencies
+# isolate-elf — ELF Symbol Isolation for Bundled System Dependencies
 
 Tool for renaming dynamic symbols in shared libraries to prevent interposition
 when bundled copies coexist with system copies in the same process.
 
 ## What it does
 
-Given `libzstd.so.1`, isolib produces four artifacts:
+Given `libzstd.so.1`, isolate-elf produces four artifacts:
 
 1. **Prefixed .so** — all exported symbols renamed (`ZSTD_decompress` → `rocm_ZSTD_decompress`)
    via direct ELF binary rewriting of `.dynsym`/`.dynstr` + hash table rebuild
@@ -20,16 +20,16 @@ script provides the original name via the trampoline, which pulls in the real .s
 
 ```bash
 # Isolate a library
-isolib isolate libzstd.so.1 --prefix rocm_ --name zstd -o output/
+isolate-elf isolate libzstd.so.1 --prefix rocm_ --name zstd -o output/
 
 # Dry-run: see what would be renamed
-isolib inspect libzstd.so.1
+isolate-elf inspect libzstd.so.1
 
 # Strict mode: treat warnings as errors
-isolib isolate libzstd.so.1 --prefix rocm_ --name zstd -o output/ --werror
+isolate-elf isolate libzstd.so.1 --prefix rocm_ --name zstd -o output/ --werror
 
 # Allow specific warning categories
-isolib isolate libzstd.so.1 --prefix rocm_ --name zstd -o output/ --werror --allow-object-symbol
+isolate-elf isolate libzstd.so.1 --prefix rocm_ --name zstd -o output/ --werror --allow-object-symbol
 ```
 
 ## Symbol classification
@@ -75,7 +75,7 @@ permit specific categories.
 ## ELF rewriting internals
 
 `objcopy --redefine-syms` does **not** modify `.dynsym` (only `.symtab`), so
-isolib includes its own ELF binary rewriter (`elf_rewrite.py`) that:
+isolate-elf includes its own ELF binary rewriter (`elf_rewrite.py`) that:
 
 1. Builds a new `.dynstr` with renamed strings appended
 2. Updates `.dynsym` `st_name` offsets
@@ -98,7 +98,7 @@ pytest integration/
 pytest tests/ integration/
 
 # Dump before/after artifacts for manual inspection
-pytest integration/ --dump-artifacts=/tmp/isolib-dump
+pytest integration/ --dump-artifacts=/tmp/isolate-elf-dump
 ```
 
 Integration tests download real sysdep sources, build them, isolate, then verify:

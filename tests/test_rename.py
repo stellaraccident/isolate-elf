@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from isolib.elf import extract_dynamic_symbols
-from isolib.model import SymbolRename, SymbolType
-from isolib.rename import generate_redefine_map, rename_symbols
+from isolate_elf.elf import extract_dynamic_symbols
+from isolate_elf.model import SymbolRename, SymbolType
+from isolate_elf.rename import generate_redefine_map, rename_symbols
 
 
 def test_generate_redefine_map() -> None:

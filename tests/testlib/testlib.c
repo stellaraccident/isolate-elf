@@ -1,4 +1,4 @@
-/* Synthetic test library for isolib unit tests.
+/* Synthetic test library for isolate-elf unit tests.
  * Exports: 3 FUNC symbols, 1 OBJECT symbol.
  */
 

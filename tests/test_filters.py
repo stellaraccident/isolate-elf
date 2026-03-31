@@ -1,7 +1,7 @@
 """Tests for symbol filtering."""
 
-from isolib.filters import classify_symbol
-from isolib.model import (
+from isolate_elf.filters import classify_symbol
+from isolate_elf.model import (
     ElfSymbol,
     SymbolBind,
     SymbolType,

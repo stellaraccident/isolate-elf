@@ -15,9 +15,9 @@ from pathlib import Path
 
 import pytest
 
-from isolib.model import IsolationConfig, IsolationResult, WarningCategory
-from isolib.pipeline import isolate_library
-from isolib.toolchain import Toolchain
+from isolate_elf.model import IsolationConfig, IsolationResult, WarningCategory
+from isolate_elf.pipeline import isolate_library
+from isolate_elf.toolchain import Toolchain
 
 from .conftest import BuiltLibrary, download_and_extract, CACHE_DIR
 from .verify import verify_autoconf_link, verify_negative_link, verify_runtime_isolation, verify_symbols
