@@ -54,6 +54,7 @@ def generate_trampoline_asm(renames: list[SymbolRename], arch: str) -> str:
 
 def _x86_64_stub(r: SymbolRename) -> list[str]:
     return [
+        f".section .text.{r.original},\"ax\",@progbits",
         f".globl {r.original}",
         f".type {r.original}, @function",
         f"{r.original}:",
@@ -64,6 +65,7 @@ def _x86_64_stub(r: SymbolRename) -> list[str]:
 
 def _aarch64_stub(r: SymbolRename) -> list[str]:
     return [
+        f".section .text.{r.original},\"ax\",@progbits",
         f".globl {r.original}",
         f".type {r.original}, @function",
         f"{r.original}:",
@@ -78,15 +80,22 @@ def build_stubs_archive(
     arch: str,
     assembler: Path = Path("as"),
     archiver: Path = Path("ar"),
+    renames: list[SymbolRename] | None = None,
 ) -> None:
     """Assemble trampoline stubs and package them into a static archive.
 
+    Each stub gets its own .o file so the linker only pulls archive
+    members that satisfy unresolved references. Without this, linking
+    against the archive pulls ALL stubs (e.g. 400 zstd trampolines)
+    even if the consumer only uses 10 functions.
+
     Args:
-        asm_source: Assembly source text.
+        asm_source: Assembly source text (used as fallback if renames not provided).
         output_archive: Path for the output .a file.
         arch: Target architecture.
         assembler: Path to the assembler.
         archiver: Path to the archiver (ar).
+        renames: If provided, generates per-symbol .o files for fine-grained linking.
 
     Raises:
         RuntimeError: If assembly or archiving fails, or output is empty.
@@ -94,30 +103,53 @@ def build_stubs_archive(
     if not asm_source.strip():
         raise ValueError("Empty assembly source")
 
+    func_renames = [
+        r for r in (renames or [])
+        if r.sym_type in (SymbolType.FUNC, SymbolType.IFUNC)
+    ]
+
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
-        asm_file = tmp / "stubs.s"
-        obj_file = tmp / "stubs.o"
+        obj_files: list[Path] = []
 
-        asm_file.write_text(asm_source)
+        if func_renames:
+            # Per-symbol .o files for fine-grained archive linking
+            for r in func_renames:
+                if arch == "x86_64":
+                    stub_lines = _x86_64_stub(r)
+                elif arch == "aarch64":
+                    stub_lines = _aarch64_stub(r)
+                else:
+                    raise ValueError(f"Unsupported architecture: {arch}")
 
-        # Assemble
+                asm_file = tmp / f"{r.original}.s"
+                obj_file = tmp / f"{r.original}.o"
+                asm_file.write_text("\n".join(stub_lines) + "\n")
+
+                subprocess.run(
+                    [str(assembler), "-o", str(obj_file), str(asm_file)],
+                    check=True, capture_output=True, text=True,
+                )
+                if obj_file.exists() and obj_file.stat().st_size > 0:
+                    obj_files.append(obj_file)
+        else:
+            # Fallback: single .o from full asm source
+            asm_file = tmp / "stubs.s"
+            obj_file = tmp / "stubs.o"
+            asm_file.write_text(asm_source)
+
+            subprocess.run(
+                [str(assembler), "-o", str(obj_file), str(asm_file)],
+                check=True, capture_output=True, text=True,
+            )
+            if not obj_file.exists() or obj_file.stat().st_size == 0:
+                raise RuntimeError("Assembler produced no output")
+            obj_files.append(obj_file)
+
+        # Archive all .o files
         subprocess.run(
-            [str(assembler), "-o", str(obj_file), str(asm_file)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-
-        if not obj_file.exists() or obj_file.stat().st_size == 0:
-            raise RuntimeError("Assembler produced no output")
-
-        # Archive
-        subprocess.run(
-            [str(archiver), "rcs", str(output_archive), str(obj_file)],
-            check=True,
-            capture_output=True,
-            text=True,
+            [str(archiver), "rcs", str(output_archive)] + [str(o) for o in obj_files],
+            check=True, capture_output=True, text=True,
         )
 
     if not output_archive.exists() or output_archive.stat().st_size == 0:

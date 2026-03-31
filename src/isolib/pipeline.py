@@ -118,10 +118,13 @@ def isolate_library(
 
         shutil.copy2(config.input_so, prefixed_so_path)
 
-    # 6. Generate trampolines
+    # 6. Generate trampolines (one .o per symbol for fine-grained archive linking)
     asm_source = generate_trampoline_asm(renames, config.arch)
     if asm_source.strip():
-        build_stubs_archive(asm_source, stubs_path, config.arch, tc.assembler, tc.archiver)
+        build_stubs_archive(
+            asm_source, stubs_path, config.arch,
+            tc.assembler, tc.archiver, renames=renames,
+        )
         log.info("Built stubs archive: %s", stubs_path.name)
     else:
         log.warning("No function symbols — creating empty stubs archive")

@@ -193,7 +193,9 @@ def elfutils_built(isolated_deps: dict, toolchain: Toolchain) -> dict[str, Built
         if not os.access(configure, os.X_OK):
             configure.chmod(0o755)
 
-        # Build CPPFLAGS and LDFLAGS pointing at isolated deps
+        # Build CPPFLAGS and LDFLAGS pointing at isolated deps.
+        # The stubs archive has one .o per trampoline, so the linker only
+        # pulls the members that satisfy unresolved references.
         cppflags_parts = []
         ldflags_parts = []
         for dep_name, (iso_dir, include_dir) in isolated_deps.items():
