@@ -52,36 +52,64 @@ def _dump_isolation_artifacts(request: pytest.FixtureRequest, dump_dir: Path | N
     if dump_dir is None:
         return
 
-    # Look for *_built and *_isolated fixtures in the test's scope
     for name in list(request.fixturenames):
-        if name.endswith("_built"):
-            lib_name = name.removesuffix("_built")
-            iso_name = f"{lib_name}_isolated"
-            if iso_name not in request.fixturenames:
-                continue
+        if not name.endswith("_isolated"):
+            continue
 
-            try:
-                built = request.getfixturevalue(name)
-                _, result = request.getfixturevalue(iso_name)
-            except Exception:
-                continue
+        try:
+            iso_val = request.getfixturevalue(name)
+        except Exception:
+            continue
 
-            lib_dir = dump_dir / lib_name
-            before = lib_dir / "before"
-            after = lib_dir / "after"
-            before.mkdir(parents=True, exist_ok=True)
-            after.mkdir(parents=True, exist_ok=True)
+        # Unpack the isolation result — tests return either:
+        #   (config, result)           — most libraries
+        #   (config, result, built)    — elfutils sub-libraries
+        if not isinstance(iso_val, tuple) or len(iso_val) < 2:
+            continue
 
-            # Copy original
-            if hasattr(built, "so_path") and built.so_path.exists():
-                shutil.copy2(built.so_path, before / built.so_path.name)
+        result = iso_val[1]
+        if not hasattr(result, "prefixed_so"):
+            continue
 
-            # Copy isolated artifacts
-            for attr in ("prefixed_so", "stubs_archive", "linker_script", "redirect_header"):
-                p = getattr(result, attr, None)
-                if p and p.exists():
-                    shutil.copy2(p, after / p.name)
-            break  # Only one library per test class
+        # Derive a dump name from the fixture name
+        lib_name = name.removesuffix("_isolated")
+
+        # Try to find the corresponding _built fixture for the "before" copy
+        built = None
+        for built_name in [f"{lib_name}_built", "elfutils_built"]:
+            if built_name in request.fixturenames:
+                try:
+                    built_val = request.getfixturevalue(built_name)
+                    if isinstance(built_val, dict):
+                        # elfutils returns dict[str, BuiltLibrary]
+                        built = built_val.get(lib_name)
+                    elif hasattr(built_val, "so_path"):
+                        built = built_val
+                except Exception:
+                    pass
+                if built:
+                    break
+
+        # Also check if built was embedded in the iso tuple (3-element)
+        if built is None and len(iso_val) >= 3 and hasattr(iso_val[2], "so_path"):
+            built = iso_val[2]
+
+        lib_dir = dump_dir / lib_name
+        before = lib_dir / "before"
+        after = lib_dir / "after"
+        before.mkdir(parents=True, exist_ok=True)
+        after.mkdir(parents=True, exist_ok=True)
+
+        # Copy original
+        if built and hasattr(built, "so_path") and built.so_path.exists():
+            shutil.copy2(built.so_path, before / built.so_path.name)
+
+        # Copy isolated artifacts
+        for attr in ("prefixed_so", "stubs_archive", "linker_script", "redirect_header"):
+            p = getattr(result, attr, None)
+            if p and p.exists():
+                shutil.copy2(p, after / p.name)
+        break  # Only one library per test
 
 # Cache directory for downloaded sources and built artifacts
 CACHE_DIR = Path(os.environ.get(
