@@ -1,0 +1,8 @@
+TESTVER_1.0 {
+  global:
+    versioned_func_a;
+    versioned_func_b;
+    versioned_data;
+  local:
+    *;
+};
