@@ -19,7 +19,7 @@ classifiers = [
 ]
 
 [project.urls]
-Repository = "https://github.com/ROCm/isolate-elf"
+Repository = "https://github.com/stellaraccident/isolate-elf"
 
 [project.scripts]
 isolate-elf = "isolate_elf.cli:main"

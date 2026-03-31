@@ -15,7 +15,7 @@ publisher:
 
 | Field | Value |
 |-------|-------|
-| Owner | `ROCm` (or your GitHub org) |
+| Owner | `stellaraccident` |
 | Repository | `isolate-elf` |
 | Workflow name | `release.yml` |
 | Environment name | `pypi` |
